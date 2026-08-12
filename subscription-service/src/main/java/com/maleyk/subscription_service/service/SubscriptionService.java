@@ -3,11 +3,13 @@ package com.maleyk.subscription_service.service;
 import com.maleyk.subscription_service.dto.SubscriptionResponse;
 import com.maleyk.subscription_service.model.Subscription;
 import com.maleyk.subscription_service.model.SubscriptionType;
+import com.maleyk.subscription_service.outbox.OutboxMessage;
+import com.maleyk.subscription_service.outbox.OutboxMessageRepository;
+import com.maleyk.subscription_service.outbox.OutboxStatus;
 import com.maleyk.subscription_service.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +22,12 @@ import java.util.List;
 public class SubscriptionService {
 
     private final SubscriptionRepository repository;
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final OutboxMessageRepository outboxMessageRepository;
 
     @Value("${kafka.topics.subscription-expired}")
     private String subscriptionExpiredTopic;
 
+    @Transactional(readOnly = true)
     public SubscriptionResponse getSubscription(String login) {
         Subscription subscription = repository.findById(login)
                 .orElseGet(() -> createDefaultSubscription(login));
@@ -38,6 +41,7 @@ public class SubscriptionService {
         subscription.setSubscriptionType(SubscriptionType.FREE);
         return repository.save(subscription);
     }
+
     @Transactional
     public void downgradeExpiredSubscriptions() {
         List<Subscription> expired = repository.findAllBySubscriptionTypeAndExpiresAtBefore(
@@ -47,8 +51,13 @@ public class SubscriptionService {
         for (Subscription subscription : expired) {
             subscription.setSubscriptionType(SubscriptionType.FREE);
             repository.save(subscription);
-            kafkaTemplate.send(subscriptionExpiredTopic,subscription.getLogin());
-            log.info("Подписка истекла, понижена до FREE: {}",subscription.getLogin());
+            OutboxMessage message = new OutboxMessage();
+            message.setTopic(subscriptionExpiredTopic);
+            message.setPayload(subscription.getLogin());
+            message.setStatus(OutboxStatus.PENDING);
+            message.setCreatedAt(LocalDateTime.now());
+            outboxMessageRepository.save(message);
+            log.info("Подписка истекла, понижена до FREE: {}", subscription.getLogin());
         }
     }
 }

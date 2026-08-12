@@ -13,7 +13,7 @@ public class SubscriptionController {
 
     private final SubscriptionService service;
 
-    @GetMapping("{login}")
+    @GetMapping("/{login}")
     public SubscriptionResponse getSubscription(@PathVariable String login,
                                                 @RequestHeader("X-User-Login") String requesterLogin) {
         if (!login.equals(requesterLogin)) {
