@@ -27,7 +27,7 @@ public class SubscriptionService {
     @Value("${kafka.topics.subscription-expired}")
     private String subscriptionExpiredTopic;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SubscriptionResponse getSubscription(String login) {
         Subscription subscription = repository.findById(login)
                 .orElseGet(() -> createDefaultSubscription(login));
