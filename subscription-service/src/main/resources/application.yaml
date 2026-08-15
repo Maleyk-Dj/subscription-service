@@ -1,0 +1,41 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: subscription-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5435/subscription
+    username: subscription_user
+    password: password
+    hikari:
+      connection-timeout: 5000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  kafka:
+    listener:
+      ack-mode: manual_immediate
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: subscription-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+kafka:
+  topics:
+    subscription-expired: subscription-expired
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
